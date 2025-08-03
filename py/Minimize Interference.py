@@ -153,11 +153,11 @@ def plotPointsOnSphere(points):
     plt.show()
 
 def main():
-    parser = argparse.ArgumentParser(description="Минимизация интерференции")
-    parser.add_argument("-c", "--constellation", default="singlePolar", help="Название группировки КА")
-    parser.add_argument("-f", "--freqs", type=int, default=10, help="Кол-во доступных частот")
+    parser = argparse.ArgumentParser(description="Решение задачи минимизации интерференции и переключений частот")
+    parser.add_argument("-c", "--constellation", default="singlePolar", help="Название группировки КА (по-умолчанию - singlePolar)")
+    parser.add_argument("-f", "--freqs", type=int, default=10, help="Кол-во доступных частот (по-умолчанию - 10)")
     parser.add_argument("-t", "--epochs", type=int, default=1002, help="Кол-во эпох")
-    parser.add_argument("-p", "--plot", action="store_true", help="Вывод графика")
+    parser.add_argument("-p", "--plot", action="store_true", help="Вывод трехмерного изображения точек на единичной сфере в нулевую эпоху")
     args = parser.parse_args()
 
     for key, value in vars(args).items():
