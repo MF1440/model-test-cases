@@ -1,0 +1,178 @@
+================================================================
+  Sphere Coloring Solver
+================================================================
+Problem:  N=64000 points, K=1008 colors
+Range:    [0, 3189.07] km (auto: 4R/sqrt(ceil(N/K)))
+Threads:  12
+Seed:     42
+
+Phase 1:  Multi-point CO (Conflict Optimizer)
+  Budget: 15 min
+  Method: CG:SHOP 2022, w(u)=1+q^1.2, sigma=0.15
+  CO iters: 200000, restarts: 10
+  Points: N=10 initial, double on no feasible, max 60
+  Per-point time: 60/30/15s (adaptive by distance)
+  Conflict cut: 2000
+
+Phase 2:  Multi-point TabuCol (fresh greedy init)
+  Budget: 60 min
+  Method: steepest descent, tenure=0.6K, +2/500 iters
+  TabuCol iters: 200000 per run
+  Runs: 12 parallel
+  Points: N=5 initial, 3 min/point
+  Conflict cut: 500
+  Init: fresh greedy (no warm-start)
+
+Min range: 2 km
+================================================================
+
+--- Phase 1: Multi-point CO ---
+  Round 1: [0, 3189.07] N=10
+    [1/10] d=254.023 km (738722 edges, deg=27)   feasible  0m0s
+    [2/10] d=377.405 km (1780102 edges, deg=59)   feasible  0m0s
+    [3/10] d=886.462 km (9834489 edges, deg=314)   feasible  0m0s
+    [4/10] d=1147.06 km (16521504 edges, deg=524)   feasible  0m0s
+    [5/10] d=1417.81 km (25252506 edges, deg=799)   feasible  0m1s
+    [6/10] d=1626.42 km (33289237 edges, deg=1047)   feasible  0m2s
+    [7/10] d=2059.9 km (53371300 edges, deg=1677)   feasible  0m3s
+    [8/10] d=2338.77 km (68827909 edges, deg=2162)   feasible  0m5s
+    [9/10] d=2596.82 km (84851699 edges, deg=2663)   feasible  0m8s
+    [10/10] d=3077.73 km (119183366 edges, deg=3740)   INFEASIBLE (27225)  0m25s
+    (cut at 3077.73 km, 27225 conf)
+  Round 2: [2596.82, 3077.73] N=10
+    [1/10] d=2599.53 km (85029198 edges, deg=2670)   INFEASIBLE (760)  1m23s
+    [2/10] d=2679.63 km (90350937 edges, deg=2836)   INFEASIBLE (5147)  2m25s
+    (cut at 2679.63 km, 5147 conf)
+  No feasible, retrying [2596.82, 2679.63] N=20
+  Round 3: [2596.82, 2679.63] N=20
+    [1/20] d=2600.7 km (85109418 edges, deg=2672)   INFEASIBLE (1024)  3m23s
+    [2/20] d=2600.96 km (85127322 edges, deg=2673)   INFEASIBLE (1041)  4m22s
+    [3/20] d=2609.21 km (85665466 edges, deg=2689)   INFEASIBLE (2478)  5m23s
+    (cut at 2609.21 km, 2478 conf)
+  No feasible, retrying [2596.82, 2609.21] N=40
+  Round 4: [2596.82, 2609.21] N=40
+    [1/40] d=2597.01 km (84863781 edges, deg=2664)   feasible  5m25s
+    [2/40] d=2597.31 km (84883159 edges, deg=2665)   feasible  5m26s
+    [3/40] d=2597.44 km (84890825 edges, deg=2665)   feasible  5m27s
+    [4/40] d=2597.75 km (84910221 edges, deg=2666)   feasible  5m28s
+    [5/40] d=2598.22 km (84939840 edges, deg=2667)   feasible  5m30s
+    [6/40] d=2598.49 km (84957529 edges, deg=2668)   feasible  5m31s
+    [7/40] d=2598.69 km (84970805 edges, deg=2668)   feasible  5m32s
+    [8/40] d=2599.29 km (85013030 edges, deg=2668)   feasible  5m34s
+    [9/40] d=2599.37 km (85018400 edges, deg=2668)   feasible  5m35s
+    [10/40] d=2599.63 km (85035968 edges, deg=2670)   feasible  5m36s
+    [11/40] d=2600.1 km (85068093 edges, deg=2671)   feasible  5m38s
+    [12/40] d=2600.34 km (85083897 edges, deg=2672)   feasible  5m39s
+    [13/40] d=2600.84 km (85119018 edges, deg=2672)   feasible  5m41s
+    [14/40] d=2600.99 km (85129160 edges, deg=2673)   feasible  5m42s
+    [15/40] d=2601.42 km (85159306 edges, deg=2674)   INFEASIBLE (1131)  6m13s
+    [16/40] d=2601.67 km (85176592 edges, deg=2674)   INFEASIBLE (1158)  6m44s
+    [17/40] d=2601.91 km (85192750 edges, deg=2674)   INFEASIBLE (1253)  7m15s
+    [18/40] d=2602.08 km (85204518 edges, deg=2674)   INFEASIBLE (1334)  7m47s
+    [19/40] d=2602.68 km (85246039 edges, deg=2675)   INFEASIBLE (1480)  8m18s
+    [20/40] d=2602.87 km (85258871 edges, deg=2675)   INFEASIBLE (1576)  8m49s
+    [21/40] d=2603.13 km (85275667 edges, deg=2676)   INFEASIBLE (1641)  9m20s
+    [22/40] d=2603.32 km (85288397 edges, deg=2676)   INFEASIBLE (1742)  9m51s
+    [23/40] d=2603.7 km (85312176 edges, deg=2676)   INFEASIBLE (1788)  10m22s
+    [24/40] d=2604.01 km (85331752 edges, deg=2677)   INFEASIBLE (1867)  10m53s
+    [25/40] d=2604.46 km (85359836 edges, deg=2678)   INFEASIBLE (1920)  11m9s
+    [26/40] d=2604.75 km (85377036 edges, deg=2679)   INFEASIBLE (1963)  11m25s
+    [27/40] d=2605.13 km (85400030 edges, deg=2680)   INFEASIBLE (2017)  11m41s
+    (cut at 2605.13 km, 2017 conf)
+  Round 5: [2600.99, 2605.13] N=40
+    [1/40] d=2601 km (85130376 edges, deg=2673)   feasible  11m42s
+    [2/40] d=2601.13 km (85139434 edges, deg=2673)   feasible  11m44s
+    [3/40] d=2601.21 km (85145244 edges, deg=2673)   feasible  11m45s
+    [4/40] d=2601.38 km (85156392 edges, deg=2674)   feasible  11m46s
+    [5/40] d=2601.44 km (85161140 edges, deg=2674)   feasible  11m48s
+    [6/40] d=2601.53 km (85166600 edges, deg=2674)   feasible  11m49s
+    [7/40] d=2601.67 km (85176216 edges, deg=2674)   feasible  11m50s
+    [8/40] d=2601.71 km (85179422 edges, deg=2674)   feasible  11m52s
+    [9/40] d=2601.9 km (85192128 edges, deg=2674)   feasible  11m53s
+    [10/40] d=2601.96 km (85196370 edges, deg=2674)   feasible  11m54s
+    [11/40] d=2602.06 km (85203036 edges, deg=2674)   feasible  11m55s
+    [12/40] d=2602.22 km (85213834 edges, deg=2675)   feasible  11m57s
+    [13/40] d=2602.3 km (85219498 edges, deg=2675)   feasible  11m58s
+    [14/40] d=2602.37 km (85223746 edges, deg=2675)   feasible  11m59s
+    [15/40] d=2602.49 km (85233052 edges, deg=2675)   feasible  12m1s
+    [16/40] d=2602.59 km (85240173 edges, deg=2675)   feasible  12m2s
+    [17/40] d=2602.74 km (85249951 edges, deg=2675)   feasible  12m4s
+    [18/40] d=2602.83 km (85256005 edges, deg=2675)   feasible  12m5s
+    [19/40] d=2602.93 km (85262633 edges, deg=2675)   feasible  12m6s
+    [20/40] d=2603.01 km (85267873 edges, deg=2675)   feasible  12m8s
+    [21/40] d=2603.12 km (85274877 edges, deg=2676)   feasible  12m9s
+    [22/40] d=2603.26 km (85283993 edges, deg=2676)   feasible  12m11s
+    [23/40] d=2603.33 km (85288515 edges, deg=2676)   feasible  12m12s
+    [24/40] d=2603.4 km (85293170 edges, deg=2676)   feasible  12m13s
+    [25/40] d=2603.5 km (85299740 edges, deg=2676)   feasible  12m15s
+    [26/40] d=2603.59 km (85305310 edges, deg=2676)   feasible  12m16s
+    [27/40] d=2603.68 km (85310800 edges, deg=2676)   feasible  12m17s
+    [28/40] d=2603.82 km (85319896 edges, deg=2677)   feasible  12m19s
+    [29/40] d=2603.93 km (85326184 edges, deg=2677)   feasible  12m20s
+    [30/40] d=2604.02 km (85332030 edges, deg=2677)   feasible  12m22s
+    [31/40] d=2604.09 km (85336688 edges, deg=2677)   feasible  12m23s
+    [32/40] d=2604.22 km (85344596 edges, deg=2677)   feasible  12m24s
+    [33/40] d=2604.37 km (85354516 edges, deg=2678)   INFEASIBLE (1194)  12m40s
+    [34/40] d=2604.48 km (85361202 edges, deg=2678)   INFEASIBLE (1211)  12m57s
+    [35/40] d=2604.57 km (85366262 edges, deg=2679)   INFEASIBLE (1245)  13m13s
+    [36/40] d=2604.71 km (85374444 edges, deg=2679)   INFEASIBLE (1244)  13m29s
+    [37/40] d=2604.78 km (85379050 edges, deg=2679)   INFEASIBLE (1242)  13m45s
+    [38/40] d=2604.91 km (85386992 edges, deg=2679)   INFEASIBLE (1278)  14m1s
+    [39/40] d=2605.01 km (85392868 edges, deg=2679)   INFEASIBLE (1348)  14m17s
+    [40/40] d=2605.07 km (85396590 edges, deg=2680)   INFEASIBLE (1329)  14m33s
+  Phase 1 summary:
+    Rounds: 6
+    Best feasible: 2604.22 km
+    Final range: [2604.22, 2605.13]
+    Time: 14m33s
+
+--- Phase 2: Multi-point TabuCol ---
+  Round 1: [2604.22, 3189.07] N=5
+    [1/5] d=2619.13 km (86330307 edges, deg=2711)   feasible  15m7s
+    [2/5] d=2733.88 km (94035684 edges, deg=2955)   INFEASIBLE (971)  18m17s
+    (skip rest of round)
+  Round 2: [2619.13, 3189.07] N=10
+    [1/10] d=2649.2 km (88277266 edges, deg=2775)   feasible  18m55s
+    [2/10] d=2690.68 km (91083433 edges, deg=2858)   feasible  20m30s
+    [3/10] d=2747.88 km (94964785 edges, deg=2983)   INFEASIBLE (1325)  23m40s
+    (cut hi=2747.88)
+  Round 3: [2690.68, 2747.88] N=10
+    [1/10] d=2692.21 km (91193242 edges, deg=2861)   feasible  26m28s
+    [2/10] d=2698.35 km (91622584 edges, deg=2879)   feasible  28m39s
+    [3/10] d=2705.32 km (92091611 edges, deg=2890)   INFEASIBLE (287)  31m48s
+    [4/10] d=2712.3 km (92578699 edges, deg=2904)   INFEASIBLE (334)  34m57s
+    [5/10] d=2716.64 km (92875867 edges, deg=2914)   INFEASIBLE (366)  38m7s
+    [6/10] d=2723.46 km (93330598 edges, deg=2929)   INFEASIBLE (846)  41m18s
+    (skip rest of round)
+  Round 4: [2698.35, 2747.88] N=10
+    [1/10] d=2699.3 km (91687338 edges, deg=2879)   feasible  43m6s
+    [2/10] d=2705.71 km (92117475 edges, deg=2891)   INFEASIBLE (321)  46m15s
+    [3/10] d=2708.82 km (92334231 edges, deg=2898)   INFEASIBLE (432)  49m23s
+    [4/10] d=2716.9 km (92894388 edges, deg=2914)   INFEASIBLE (628)  52m30s
+    (skip rest of round)
+  Round 5: [2699.3, 2747.88] N=20
+    [1/20] d=2701.63 km (91846013 edges, deg=2884)   feasible  54m25s
+    [2/20] d=2702.73 km (91914933 edges, deg=2886)   feasible  56m15s
+    [3/20] d=2705.71 km (92118065 edges, deg=2891)   feasible  58m20s
+    [4/20] d=2707.98 km (92272537 edges, deg=2897)   INFEASIBLE (266)  61m30s
+    [5/20] d=2710.95 km (92485431 edges, deg=2901)   INFEASIBLE (469)  64m40s
+    [6/20] d=2713.25 km (92648435 edges, deg=2906)   INFEASIBLE (353)  67m51s
+    [7/20] d=2714 km (92700053 edges, deg=2907)   feasible  70m50s
+    [8/20] d=2718.08 km (92976365 edges, deg=2916)   INFEASIBLE (658)  73m57s
+    (skip rest of round)
+  Round 6: [2714, 2747.88] N=20
+    [1/20] d=2714.81 km (92755687 edges, deg=2908)   INFEASIBLE (874)  75m10s
+    (skip rest of round)
+  Range exhausted.
+  Refining [2714, 2724]
+  Time limit reached.
+
+================================================================
+  RESULT
+================================================================
+  Chord distance: 2714 km
+  Arc distance:   2734.91 km
+  Conflicts:      0
+  BS steps:       65
+  Total time:     75m10s
+================================================================
