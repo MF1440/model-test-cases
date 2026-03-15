@@ -3,3 +3,4 @@
 *.7z
 *.DS_Store
 *.gif
+build/
