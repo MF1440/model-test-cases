@@ -1,52 +1,101 @@
-import numpy as np
 import json
-from typing import NamedTuple
+import os
+from typing import Generic, List, NamedTuple, TypeVar
+
+import numpy as np
+
+T = TypeVar("T")
 
 
-class Parameters(object):
-    pass
+class Constant(Generic[T]):
+    def __init__(self, value: T):
+        self._value = value
+
+    def __get__(self, instance, owner) -> T:
+        return self._value
+
+    def __set__(self, instance, value: T):
+        raise AttributeError("Невозможно изменить константу")
 
 
-Const = Parameters()
-Const.earthRadius = 6378135      # Экваториальный радиус Земли [m]
-Const.earthGM = 3.986004415e+14  # Гравитационный параметр Земли [m3/s2]
-Const.earthJ2 = 1.082626e-3      # Вторая зональная гармоника геопотенциала
+class Earth(object):
+    """Параметры (константы) планеты Земля"""
 
-group = Parameters()
+    radius: float = Constant(6378135)
+    """Экваториальный радиус Земли [м]"""
+
+    gm: float = Constant(3.986004415e14)
+    """Гравитационный параметр Земли [м3/с2]"""
+
+    j2: float = Constant(1.082626e-3)
+    """Вторая зональная гармоника геопотенциала"""
 
 
 class Walker(NamedTuple):
-    inclination: float           # наклонение орбиты
-    satsPerPlane: int            # число КА в каждой орбитальной плоскости группы
-    planeCount: int              # число орбитальных плоскостей в группе
-    f: int                       # фазовый сдвиг по аргументу широты между КА в соседних плоскостях
-    altitude: float              # высота орбиты
-    maxRaan: float               # максимум прямого восхождения восходящего узла (при распределении орбитальных плоскостей)
-    startRaan: float             # прямое восхождение восходящего узла для первой плоскости
+    """Базовый класс спутниковой группы типа Walker delta. Хранит неизменяемую информацию"""
+
+    inclination: float
+    """Наклонение орбиты [градусы]"""
+
+    satsPerPlane: int
+    """Число КА в каждой орбитальной плоскости группы"""
+
+    planeCount: int
+    """Число орбитальных плоскостей в группе"""
+
+    phaseShift: int
+    """Фазовый сдвиг по аргументу широты между КА в соседних плоскостях"""
+
+    altitude: float
+    """Высота орбиты [км]"""
+
+    maxRaan: float
+    """Максимум прямого восхождения восходящего узла (при распределении орбитальных плоскостей) [градусы]"""
+
+    startRaan: float
+    """Прямое восхождение восходящего узла (RAAN - Right Ascension of Ascending Node) для первой плоскости [градусы]"""
 
 
 class WalkerGroup(Walker):
+    """Класс, хранящий информацию о спутниковой группе типа Walker delta"""
 
-    def getTotalSatCount(self):
+    def totalSatCount(self) -> int:
+        """Общее число КА в группе"""
+
         return self.satsPerPlane * self.planeCount
 
-    def getInitialElements(self):
-        startRaan   = np.deg2rad(self.startRaan)
-        maxRaan     = np.deg2rad(self.maxRaan)
-        inclination = np.deg2rad(self.inclination)
-        altitude    = self.altitude * 1000
-        satCount    = self.getTotalSatCount()
+    def calcInitialElements(self) -> np.ndarray:
+        """
+        Выполняет расчёт Кеплеровых элементов орбиты группы спутников
+
+        Returns:
+            np.ndarray: матрица размера [satCount, 6], строки которой имеют вид
+
+                [semiMajorAxis, 0, 0, raan, inclination, argumentOfLatitude]
+        """
+
+        startRaan: float = np.deg2rad(self.startRaan)
+        maxRaan: float = np.deg2rad(self.maxRaan)
+        inclination: float = np.deg2rad(self.inclination)
+        altitude: float = self.altitude * 1000.0
+        satCount: int = self.totalSatCount()
 
         raans = np.linspace(startRaan, startRaan + maxRaan, self.planeCount + 1)
         raans = raans[:-1] % (2 * np.pi)
+
+        # sma - Semi-Major Axis
+        sma = Earth.radius + altitude
+
+        # aol - Argument of latitude
+        aolStep = 2 * np.pi / self.satsPerPlane
 
         elements = np.zeros((satCount, 6))
         idx = 0
 
         for raanIdx, raan in enumerate(raans):
+            aolShift = 2 * np.pi * self.phaseShift * raanIdx / satCount
             for satIdx in range(self.satsPerPlane):
-                sma = Const.earthRadius + altitude
-                aol = 2 * np.pi * (satIdx / self.satsPerPlane + self.f * raanIdx / satCount)
+                aol = aolStep * satIdx + aolShift
 
                 elements[idx, :] = [sma, 0, 0, raan, inclination, aol]
                 idx += 1
@@ -55,43 +104,79 @@ class WalkerGroup(Walker):
 
 
 class Constellation:
+    """
+    Класс, хранящий информацию о спутниковой группировке (созвездии)
+    """
 
-    def __init__(self, nameCode):
-        self.totalSatCount = 0
-        self.groups   = []
-        self.elements = []
-        self.stateEci = []
-        self.loadFromConfig(nameCode)
+    def __init__(self, name: str):
+        self.totalSatCount: int = 0
+        """Общее количество КА группировки (созвездия)"""
 
-    def loadFromConfig(self, nameCode):
-        f = open('ConstellationsTest.json')
-        jsonData = json.loads(f.read())
+        self.groups: List[WalkerGroup] = []
+        """Спутниковые группы (типа Walker delta), входящие в группировку (созвездие)"""
 
-        for entryIdx in range(len(jsonData)):
-            if (jsonData[entryIdx]['name']).lower() == nameCode.lower():
-                print("Загружена группировка " + nameCode)
-                constellationData = jsonData[entryIdx]
+        self.elements: np.ndarray = np.zeros(0)
+        """Кеплеровы элементы орбиты всех КА группировки (созвездия)"""
 
-                for groupIdx in range(len(constellationData['Walkers'])):
-                    self.groups.append(WalkerGroup(*constellationData['Walkers'][groupIdx]))
-                    self.totalSatCount += self.groups[groupIdx].getTotalSatCount()
+        self.stateEci: np.ndarray = np.zeros(0)
+        """Координаты всех КА группировки (созвездия) в инерциальной системе координат ECI (Earth-centered inertial)"""
 
-                f.close()
-                return
+        self.loadFromConfig(name)
 
-        f.close()
-        raise Exception('Группировка не найдена в файле')
+    def loadFromConfig(self, name: str):
+        """
+        Загружает данные указанной спутниковой группировки из внешнего файла
 
-    def getInitialState(self):
+        Args:
+            name (str): имя группировки для загрузки
+
+        Raises:
+            Exception: если группировка с указанным именем не найдена в json-файле
+        """
+
+        scriptPath = os.path.dirname(__file__)
+        jsonPath = os.path.realpath(f"{scriptPath}/../ConstellationsTest.json")
+        with open(jsonPath) as f:
+            jsonData = json.loads(f.read())
+
+            for constellationData in jsonData:
+                if (constellationData["name"]).lower() == name.lower():
+                    print("Загружена группировка " + name)
+
+                    for groupData in constellationData["Walkers"]:
+                        self.groups.append(WalkerGroup(*groupData))
+                        self.totalSatCount += self.groups[-1].totalSatCount()
+                    return
+
+        raise Exception("Группировка не найдена в файле")
+
+    def calcInitialState(self):
+        """
+        Выполняет расчёт Кеплеровых элементы орбиты группировки (всех
+        входящих в неё групп спутников)
+        """
+
         self.elements = np.zeros((self.totalSatCount, 6))
-        shift = 0
 
+        startIdx = 0
         for singleGroup in self.groups:
-            ending = shift + singleGroup.getTotalSatCount()
-            self.elements[shift:ending, :] = singleGroup.getInitialElements()
-            shift = ending
+            endIdx = startIdx + singleGroup.totalSatCount()
+            self.elements[startIdx:endIdx, :] = singleGroup.calcInitialElements()
+            startIdx = endIdx
 
-    def propagateJ2(self, epochs):
+    def propagateJ2(self, epochs: List[int]):
+        """
+        Для всех указанных эпох расчитывает координаты КА в инерциальной системе
+        координат ECI (Earth-centered inertial). Результаты работы сохраняются в
+        поле `self.stateEci`
+
+        Args:
+            epochs (List[int]): список эпох для расчета координат
+        """
+
+        assert len(epochs) > 0
+        epochs = np.array(epochs).reshape(1, -1)
+
         self.stateEci = np.zeros((self.totalSatCount, 3, len(epochs)))
 
         inclination = self.elements[:, 4]
@@ -99,20 +184,29 @@ class Constellation:
         raan0 = self.elements[:, 3]
         aol0 = self.elements[:, 5]
 
-        raanPrecessionRate = -1.5 * (Const.earthJ2 * np.sqrt(Const.earthGM) * Const.earthRadius**2) \
-                           / (sma**(7/2)) * np.cos(inclination)
+        inclinationСos = np.cos(inclination)
+        inclinationSin = np.sin(inclination)
 
-        draconicOmega      = np.sqrt(Const.earthGM / sma**3) \
-                           * (1 - 1.5 * Const.earthJ2 * (Const.earthRadius / sma)**2) \
-                           * (1 - 4 * np.cos(inclination)**2)
+        earthJ2Radius = -1.5 * Earth.j2 * Earth.radius**2
 
-        for epoch in epochs:
-            aol = aol0 + epoch * draconicOmega
-            raanOmega = raan0 + epoch * raanPrecessionRate
+        raanPrecessionRate = inclinationСos / sma ** (7 / 2)
+        raanPrecessionRate *= earthJ2Radius * np.sqrt(Earth.gm)
 
-            epochState = sma * [
-                (np.cos(aol) * np.cos(raanOmega) - np.sin(aol) * np.cos(inclination) * np.sin(raanOmega)),
-                (np.cos(aol) * np.sin(raanOmega) + np.sin(aol) * np.cos(inclination) * np.cos(raanOmega)),
-                (np.sin(aol) * np.sin(inclination))]
+        draconicOmega = 1.0 - 4.0 * inclinationСos**2
+        draconicOmega *= 1.0 + earthJ2Radius / sma**2
+        draconicOmega *= np.sqrt(Earth.gm / sma**3)
 
-            self.stateEci[:, :, epochs.index(epoch)] = np.array(epochState).T
+        raanOmega = raan0 + epochs.T * raanPrecessionRate
+        raanOmegaCos = np.cos(raanOmega)
+        raanOmegaSin = np.sin(raanOmega)
+
+        aol = aol0 + epochs.T * draconicOmega
+        aolCos = np.cos(aol)
+        aolSin = np.sin(aol)
+
+        stateEciX = aolCos * raanOmegaCos - aolSin * raanOmegaSin * inclinationСos
+        stateEciY = aolCos * raanOmegaSin + aolSin * raanOmegaCos * inclinationСos
+        stateEciZ = aolSin * inclinationSin
+
+        self.stateEci = sma * [stateEciX, stateEciY, stateEciZ]
+        self.stateEci = np.transpose(self.stateEci, [2, 0, 1])
