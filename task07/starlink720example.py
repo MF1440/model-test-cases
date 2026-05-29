@@ -23,48 +23,60 @@ def main():
     # из конфига и выполнит начальную конфигурацию
     group720 = Starlink720()
 
-    # Построим граф связей между КА для выбранного момента времени. Используем
-    # наш самый первый ("наивный") вариант алгоритма построения графа
+    # Построим граф связей между КА для выбранного момента времени
     epoch = 583
-    group720.rebuildGraph(epoch=epoch, graphVariant=1)
+    group720.rebuildGraph(epoch=epoch)
+    group720.isValid()
 
     # Найдем кратчайший путь между двумя случайными КА
     srcSatIdx, dstSatIdx = np.random.choice(group720.satCount, 2, replace=False)
     path = group720.findShortestPath(srcSatIdx, dstSatIdx)
-    print(f"{srcSatIdx} -> {dstSatIdx}: {path}, {len(path)} хопов")
-
-    # Теперь используем другой, более "правильный" алгоритм построения графа и
-    # посмотрим, как изменится длина кратчайшего пути
-    group720.rebuildGraph(epoch=epoch, graphVariant=6)
-    path = group720.findShortestPath(srcSatIdx, dstSatIdx)
-    print(f"{srcSatIdx} -> {dstSatIdx}: {path}, {len(path)} хопов")
+    print(f"{srcSatIdx} -> {dstSatIdx}: {path}, {len(path)} хопа(ов)")
 
     # Построим 3D-визуализацию полученного графа нашей орбитальной группы
     group720.plot3d()
 
     graphVariants = [1, 2, 3, 4, 5, 6]
 
-    # Построим 2D-визуализацию графов, построенных разными алгоритмами
+    # Построим 2D и 3D визуализации графов, построенных разными алгоритмами
     print()
     for currentVariant in graphVariants:
-        fileName = f"figures/graphVariant{currentVariant:02}.pdf"
+        fileName2d = f"figures/graphVariant{currentVariant:02}-2d.pdf"
+        fileName3d = f"figures/graphVariant{currentVariant:02}-3d.png"
+
         group720.rebuildGraph(epoch=epoch, graphVariant=currentVariant)
-        group720.plot2d(outputFileName=fileName, verbose=True)
+        group720.plot2d(outputFileName=fileName2d, verbose=True)
+        group720.plot3d(outputFileName=fileName3d, verbose=True)
 
     # Сравним "качество" работы разных алгоритмов построения графа путем оценки
     # (средней) длины кратчайшего пути
     shortestPathLengthEvaluate(
         group720,
         epoch=epoch,
-        graphVariants=graphVariants,
+        graphVariants=[0] + graphVariants,
         outputFileName="figures/pathEvaluateFull.pdf",
     )
     shortestPathLengthEvaluate(
         group720,
         epoch=epoch,
-        graphVariants=graphVariants,
+        graphVariants=[0] + graphVariants,
         srcDstPairsCount=2000,
         outputFileName="figures/pathEvaluateSmall.pdf",
+    )
+
+    linkLengthEvaluate(
+        group720,
+        epoch=epoch,
+        graphVariants=[0],
+        kdeplot=False,
+        outputFileName="figures/linkLengthEvaluate0.pdf",
+    )
+
+    linkLengthEvaluate(
+        group720,
+        epoch=epoch,
+        graphVariants=graphVariants,
+        outputFileName="figures/linkLengthEvaluate.pdf",
     )
 
 
@@ -172,8 +184,75 @@ def shortestPathLengthEvaluate(
 
     if outputFileName:
         fig.savefig(outputFileName)
+    else:
+        plt.show()
 
-    plt.show()
+
+def linkLengthEvaluate(
+    group720: Starlink720,
+    epoch: int,
+    graphVariants: List[int] = None,
+    outputFileName: str = None,
+    kdeplot: bool = True,
+):
+    """
+    Оценка длины линков для разных типов графа
+
+    Args:
+        group720 (Starlink720): объект орбитальной группы
+
+        epoch (int): эпоха (время)
+
+        graphVariants (List[int], optional): список типов графа для оценки. Если \
+        не задан (настройка по умолчанию), то будут использованы все доступные.
+
+        outputFileName (str, optional): имя файла для сохранения результата. \
+            Если имя не задано (настройка по умолчанию), то данные будет показаны \
+            во всплывающем окне.
+    """
+
+    plt.close()
+    fig, ax = plt.subplots(1, 1)
+
+    print()
+    print("Оценка длины линков")
+
+    for currentVariant in graphVariants:
+        group720.rebuildGraph(epoch, currentVariant)
+
+        srcIdxList = []
+        dstIdxList = []
+        for srcIdx in range(group720.satCount):
+            srcIdxList += [srcIdx] * len(group720.adj[srcIdx])
+            dstIdxList += group720.adj[srcIdx]
+
+        srcState = group720.stateEci[srcIdxList, :]
+        dstState = group720.stateEci[dstIdxList, :]
+        linkLength = np.linalg.norm(srcState - dstState, axis=1) / 1000.0
+        print(srcState.shape, linkLength.shape)
+
+        if kdeplot:
+            sns.kdeplot(
+                linkLength,
+                # gridsize=maxDistance,
+                ax=ax,
+                label=f"graphVariant = {currentVariant}",
+            )
+        else:
+            sns.histplot(
+                linkLength,
+                # gridsize=maxDistance,
+                ax=ax,
+                label=f"graphVariant = {currentVariant}",
+            )
+
+    ax.set_xlabel("Длина линка (км)")
+    ax.legend()
+
+    if outputFileName:
+        fig.savefig(outputFileName)
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":

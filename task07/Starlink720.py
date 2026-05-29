@@ -31,7 +31,22 @@ class Starlink720:
     каждый из которых отвечает за соответствующую "часть" пары.
     """
 
-    def __init__(self):
+    def __init__(
+        self,
+        linkMaxLength: float = 2000,
+    ):
+        """
+        Создание нового экземпляра класса Starlink720
+
+        Args:
+            linkMaxLength (float, optional): максимально допустимая длина линка \
+            между КА группы в километрах. Если задано нулевое или отрицательное
+            значение, то ограничение на длину линка отсутствует. Значение по
+            умолчанию - 2000.
+        """
+
+        self.linkMaxLength = linkMaxLength
+
         self._constellation = Constellation("Starlink")
         self._constellation.calcInitialState()
 
@@ -40,7 +55,7 @@ class Starlink720:
         assert self._group.altitude == 720
         assert self._group.satsPerPlane == 50
 
-        self._stateEci = np.zeros(0)
+        self.stateEci = np.zeros(0)
         """Координаты КА в инерциальной системе координат ECI (Earth-centered inertial)"""
 
         self._stateStartIdx = 0
@@ -97,7 +112,7 @@ class Starlink720:
         """Число КА в каждой орбитальной плоскости группы"""
         return self._group.satsPerPlane
 
-    def rebuildGraph(self, epoch: int, graphVariant: int = 6):
+    def rebuildGraph(self, epoch: int, graphVariant: int = 0):
         """
         Выполняет построение/перестроение графа для пространственнного положения
         КА в выбранный момент времени (эпоху). Результаты работы сохраняются в
@@ -107,7 +122,7 @@ class Starlink720:
             epoch (int): эпоха (время)
 
             graphVariant (int, optional): Вариант алгоритма перестроения графа, \
-            значение из диапазона [1, 6]. По умолчанию выбран алгоритм номер 6
+            значение из диапазона [0, 6]. По умолчанию выбран алгоритм номер 0
 
         Raises:
             ValueError: в случае выбора недопустимого значения параметра graphVariant
@@ -124,7 +139,7 @@ class Starlink720:
         planeCount = self.planeCount
 
         constellation.propagateJ2([epoch])
-        self._stateEci = constellation.stateEci[stateStartIdx:stateEndIdx, :, 0]
+        self.stateEci = constellation.stateEci[stateStartIdx:stateEndIdx, :, 0]
 
         self.A.fill(False)
         self.adj = [[] for _ in range(satCount)]
@@ -143,8 +158,8 @@ class Starlink720:
                 sat2Idx = satFlatIndex(planeIdx, satInPlaneIdx + 1)
                 addLink(sat1Idx, sat2Idx)
 
-                sat1z = self._stateEci[sat1Idx, 2]
-                sat2z = self._stateEci[sat2Idx, 2]
+                sat1z = self.stateEci[sat1Idx, 2]
+                sat2z = self.stateEci[sat2Idx, 2]
                 if (sat1z * sat2z <= 0) and (sat1z < sat2z):
                     if abs(sat1z) < abs(sat2z):
                         nearestIdx = satInPlaneIdx
@@ -154,7 +169,8 @@ class Starlink720:
 
         match graphVariant:
             case 0:
-                self._rebuildFunc = None
+                self._rebuildFunc = self._rebuildV0
+                self._rebuildV0(0)
                 return
 
             case 1:
@@ -314,7 +330,7 @@ class Starlink720:
             if verbose:
                 print(outputFileName)
         else:
-            fig.show()
+            plt.show()
 
         # ----------------------------------------------------------------------
 
@@ -329,6 +345,8 @@ class Starlink720:
         pathColor: str = "red",
         earthColor: str = "light_blue",
         satSize: float = 1e5,
+        outputFileName: str = None,
+        verbose: bool = False,
     ):
         """
         Выполняет 3d отрисовку текущей орбитальной группы, включая планету,
@@ -349,6 +367,13 @@ class Starlink720:
             earthColor (str, optional): цвет планеты Земля. Значение по умолчанию: "light_blue".
 
             satSize (float, optional): размер спутников. Значение по умолчанию: 1e5.
+
+            outputFileName (str, optional): имя файла для сохранения результата. \
+            Если имя не задано (настройка по умолчанию), то данные будет показаны \
+            во всплывающем окне.
+
+            verbose (bool, optional): включение/отключение печати сообщений в \
+            терминал. По умолчанию выключено (False).
         """
 
         sats = []
@@ -356,7 +381,7 @@ class Starlink720:
         for srcIdx in range(self.satCount):
             sats.append(
                 pv.Cube(
-                    center=self._stateEci[srcIdx, :],
+                    center=self.stateEci[srcIdx, :],
                     x_length=satSize,
                     y_length=satSize,
                     z_length=satSize,
@@ -367,8 +392,8 @@ class Starlink720:
                 if self.A[srcIdx, dstIdx] != 0:
                     links.append(
                         pv.Line(
-                            self._stateEci[srcIdx, :],
-                            self._stateEci[dstIdx, :],
+                            self.stateEci[srcIdx, :],
+                            self.stateEci[dstIdx, :],
                         )
                     )
 
@@ -380,37 +405,45 @@ class Starlink720:
                 sat2Idx = shortestPathTail[1]
                 shortestPath.append(
                     pv.Line(
-                        self._stateEci[sat1Idx, :],
-                        self._stateEci[sat2Idx, :],
+                        self.stateEci[sat1Idx, :],
+                        self.stateEci[sat2Idx, :],
                     )
                 )
                 shortestPathTail = shortestPathTail[1:]
 
-        pl = pv.Plotter()
+        off_screen = True if outputFileName else False
+        plotter = pv.Plotter(off_screen=off_screen)
 
-        pl.add_mesh(pv.Sphere(radius=Earth.radius), color=earthColor)
+        plotter.add_mesh(pv.Sphere(radius=Earth.radius), color=earthColor)
 
         if links:
-            pl.add_mesh(pv.merge(links), color=linkColor)
+            plotter.add_mesh(pv.merge(links), color=linkColor)
 
         if sats:
-            pl.add_mesh(pv.merge(sats), color=satColor)
+            plotter.add_mesh(pv.merge(sats), color=satColor)
 
         if shortestPath:
-            pl.add_mesh(
+            plotter.add_mesh(
                 pv.merge(shortestPath),
                 color=pathColor,
                 line_width=2,
             )
 
-        pl.show_axes()
+        plotter.show_axes()
 
         cameraPos = pv.CameraPosition(
-            position=(Earth.radius * 6, 0.0, 0.0),
+            position=(Earth.radius * 4, 0.0, Earth.radius * 6),
             focal_point=(0.0, 0.0, 0.0),
             viewup=(0.0, 0.0, 1.0),
         )
-        pl.show(cpos=cameraPos)
+        plotter.camera_position = cameraPos
+
+        if outputFileName:
+            plotter.screenshot(outputFileName)
+            if verbose:
+                print(outputFileName)
+        else:
+            plotter.show()
 
     def isValid(self, verbose: bool = True) -> bool:
         """
@@ -434,10 +467,20 @@ class Starlink720:
 
         for srcSatIdx in range(self.satCount):
             for dstSatIdx in self.adj[srcSatIdx]:
-                middlePoint = 0.5 * (
-                    self._stateEci[srcSatIdx] + self._stateEci[dstSatIdx]
-                )
+                srcSatState = self.stateEci[srcSatIdx]
+                dstSatState = self.stateEci[dstSatIdx]
 
+                if self.linkMaxLength > 0:
+                    length = np.linalg.norm(srcSatState - dstSatState) / 1000.0
+                    if length >= self.linkMaxLength:
+                        if verbose:
+                            print(
+                                f"Граф содержит рёбра длиннее чем {self.linkMaxLength} км"
+                            )
+
+                        return False
+
+                middlePoint = 0.5 * (srcSatState + dstSatState)
                 if np.linalg.norm(middlePoint) <= Earth.radius:
                     if verbose:
                         print("Граф содержит рёбра, пересекающие поверхность Земли")
@@ -445,6 +488,35 @@ class Starlink720:
                     return False
 
         return True
+
+    def _rebuildV0(self, planeIdx: int):
+        addLink = self._addLink
+
+        for sat1Idx in range(self.satCount):
+            if self._linksCount[sat1Idx] > 2:
+                continue
+
+            plane1Idx = sat1Idx // self.satsPerPlane
+            sat1State = self.stateEci[sat1Idx]
+
+            possibleLinks = []
+            for sat2Idx in range(self.satCount):
+                if self._linksCount[sat2Idx] > 2:
+                    continue
+
+                plane2Idx = sat2Idx // self.satsPerPlane
+                if plane2Idx == plane1Idx:
+                    continue
+
+                sat2State = self.stateEci[sat2Idx]
+                linkLength = np.linalg.norm(sat1State - sat2State) / 1000.0
+                if linkLength <= self.linkMaxLength:
+                    possibleLinks.append((sat2Idx, linkLength))
+
+            if possibleLinks:
+                possibleLinks.sort(key=lambda x: x[1])
+
+                addLink(sat1Idx, possibleLinks[-1][0])
 
     def _rebuildV1(self, planeIdx: int):
         addLink = self._addLink
