@@ -1,7 +1,7 @@
 import numpy as np
 import json
 from typing import NamedTuple
-
+from collections import deque
 
 class Parameters(object):
     pass
@@ -53,6 +53,80 @@ class WalkerGroup(Walker):
 
         return elements
 
+    def buildAdjacencyMatrixInnerPlaneLinksOnly(self):
+        # Link of satellite to itself is considered as 0 in adjacency matrix
+        simpleAdjacencyMatrix = np.zeros((self.getTotalSatCount(), self.getTotalSatCount()))
+        for planeIdx in range(self.planeCount):
+            for satelliteIdx in range(self.satsPerPlane):
+                blockIdx = planeIdx * self.satsPerPlane
+                idx = blockIdx + satelliteIdx
+                shiftIdxFrwd = (satelliteIdx + 1) % self.satsPerPlane
+                shiftIdxBkwd = (satelliteIdx - 1 + self.satsPerPlane) % self.satsPerPlane
+                simpleAdjacencyMatrix[idx, blockIdx + shiftIdxFrwd] = 1
+                simpleAdjacencyMatrix[idx, blockIdx + shiftIdxBkwd] = 1
+        return simpleAdjacencyMatrix
+        # Matrix is symmetric as 2 linked satellites can receive and send signals to each other.
+        # It means that we can store only half of matrix (for example, in upper triangular matrix form).
+        # Also matrix is sparse, so we can use CSR (or CSC) format to reduce memory consumption.
+
+    def buildAdjacencyMatrixNeighbourPlanesLinksIncluded(self):
+        # Having fixed self.f = 1 (as in example) consider simple neighbour planes links that doesn't take into account
+        # that distance between satellites is changing and other effects that can be a problem for linking
+        # ( for example, satellites could be on distance more than Earth radius )
+        simpleAdjacencyMatrix = np.zeros((self.getTotalSatCount(), self.getTotalSatCount()))
+        for planeIdx in range(self.planeCount):
+            for satelliteIdx in range(self.satsPerPlane):
+                blockIdx = planeIdx * self.satsPerPlane
+                idx = blockIdx + satelliteIdx
+                # In plane
+                shiftIdxFrwd = (satelliteIdx + 1) % self.satsPerPlane
+                shiftIdxBkwd = (satelliteIdx - 1 + self.satsPerPlane) % self.satsPerPlane
+                # Neighbour planes
+                shiftPlaneIdxRight = (planeIdx + 1) % self.planeCount
+                shiftPlaneIdxLeft = (planeIdx - 1 + self.planeCount) % self.planeCount
+                shiftSatelliteIdxRight = (round(satelliteIdx - self.f / self.planeCount) + self.satsPerPlane) % self.satsPerPlane
+                shiftSatelliteIdxLeft = (round(satelliteIdx + self.f / self.planeCount)) % self.satsPerPlane
+                simpleAdjacencyMatrix[idx, blockIdx + shiftIdxFrwd] = 1
+                simpleAdjacencyMatrix[idx, blockIdx + shiftIdxBkwd] = 1
+                simpleAdjacencyMatrix[idx, shiftPlaneIdxRight * self.satsPerPlane + shiftSatelliteIdxRight] = 1
+                simpleAdjacencyMatrix[idx, shiftPlaneIdxLeft * self.satsPerPlane + shiftSatelliteIdxLeft] = 1
+        return simpleAdjacencyMatrix
+        # Same ideas could be used here to compact matrix
+
+    def findShortestPath(self, adjacencyMatrix, startSatIdx, endSatIdx):
+        if startSatIdx == endSatIdx:
+            return [endSatIdx], 0
+
+        visitedSats = np.zeros(self.getTotalSatCount(), dtype=bool)
+        predSats = np.full(self.getTotalSatCount(), -1, dtype=int)
+
+        queue = deque([startSatIdx])
+        visitedSats[startSatIdx] = True
+
+        while queue:
+            currSatIdx = queue.popleft()
+            if currSatIdx == endSatIdx:
+                break
+            #  BFS
+            neighbours = np.where(adjacencyMatrix[currSatIdx])[0]
+            for neighbour in neighbours:
+                if not visitedSats[neighbour]:
+                    visitedSats[neighbour] = True
+                    predSats[neighbour] = currSatIdx
+                    queue.append(neighbour)
+
+        if not visitedSats[endSatIdx]:
+            return None, np.inf
+
+        pathStartToEnd = []
+        step = endSatIdx
+        while step != -1:
+            pathStartToEnd.append(step)
+            step = predSats[step]
+        pathStartToEnd.reverse()
+        pathLen = len(pathStartToEnd) - 1
+
+        return pathStartToEnd, pathLen
 
 class Constellation:
 
@@ -64,7 +138,7 @@ class Constellation:
         self.loadFromConfig(nameCode)
 
     def loadFromConfig(self, nameCode):
-        f = open('ConstellationsTest.json')
+        f = open('constellationsTest.json')
         jsonData = json.loads(f.read())
 
         for entryIdx in range(len(jsonData)):
@@ -116,3 +190,19 @@ class Constellation:
                 (np.sin(aol) * np.sin(inclination))]
 
             self.stateEci[:, :, epochs.index(epoch)] = np.array(epochState).T
+
+    def buildAdjacencyMatrixInnerPlaneLinksOnly(self, groupHeight):
+        for singleGroup in self.groups:
+            if singleGroup.altitude == groupHeight:
+                return singleGroup.buildAdjacencyMatrixInnerPlaneLinksOnly()
+    
+    def buildAdjacencyMatrixNeighbourPlanesLinksIncluded(self, groupHeight):
+        for singleGroup in self.groups:
+            if singleGroup.altitude == groupHeight:
+                return singleGroup.buildAdjacencyMatrixNeighbourPlanesLinksIncluded()
+
+    def findShortestPathWithAdjacencyMatrix(self, groupHeight, startIdx, endIdx):
+        for singleGroup in self.groups:
+            if singleGroup.altitude == groupHeight:
+                adjacencyMatrix = singleGroup.buildAdjacencyMatrixNeighbourPlanesLinksIncluded()
+                return singleGroup.findShortestPath(adjacencyMatrix, startIdx, endIdx)
