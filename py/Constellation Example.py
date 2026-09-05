@@ -7,6 +7,11 @@ constellation = Constellation('Starlink')
 # вычисление элементов орбиты для всех КА в начальный момент
 constellation.getInitialState()
 
+# usage example
+print(constellation.buildAdjacencyMatrixInnerPlaneLinksOnly(720))
+print(constellation.buildAdjacencyMatrixNeighbourPlanesLinksIncluded(720))
+print(constellation.findShortestPathWithAdjacencyMatrix(720, 3, 9))
+
 # определение точек на оси времени, в которые будут проихзводиться расчёты
 epochs = list(range(1002))
 
