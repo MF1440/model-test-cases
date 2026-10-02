@@ -1,0 +1,91 @@
+{
+  "point_count": 64000,
+  "num_labels": 1008,
+  "minimum_angle_deg": 22.05503167464793,
+  "proven_upper_bound_deg": 27.320757237314076,
+  "smallest_class": 62,
+  "largest_class": 65,
+  "global_optimum_proven": false,
+  "attempts": [
+    {
+      "threshold_deg": 18,
+      "minimum_angle_deg": 18.00004038445325
+    },
+    {
+      "threshold_deg": 18.50004038445325,
+      "minimum_angle_deg": 18.500111851811248
+    },
+    {
+      "threshold_deg": 19.000111851811248,
+      "minimum_angle_deg": 19.000153316476688
+    },
+    {
+      "threshold_deg": 19.500153316476688,
+      "minimum_angle_deg": 19.500170667746875
+    },
+    {
+      "threshold_deg": 20.000170667746875,
+      "minimum_angle_deg": 20.00021165966772
+    },
+    {
+      "threshold_deg": 20.50021165966772,
+      "minimum_angle_deg": 20.500219220317124
+    },
+    {
+      "threshold_deg": 21.000219220317124,
+      "minimum_angle_deg": 21.000221272673926
+    },
+    {
+      "threshold_deg": 21.500221272673926,
+      "minimum_angle_deg": 21.5002285918846
+    },
+    {
+      "threshold_deg": 22.0002285918846,
+      "minimum_angle_deg": 22.000278523256185
+    },
+    {
+      "threshold_deg": 22.500278523256185,
+      "minimum_angle_deg": 0.7825288129553993
+    },
+    {
+      "threshold_deg": 22.250278523256185,
+      "minimum_angle_deg": 0.7848983892127565
+    },
+    {
+      "threshold_deg": 22.125278523256185,
+      "minimum_angle_deg": 0.7592614275991393
+    },
+    {
+      "threshold_deg": 22.062778523256185,
+      "minimum_angle_deg": 0.7727337644990071
+    },
+    {
+      "threshold_deg": 22.031528523256185,
+      "minimum_angle_deg": 22.031532958545295
+    },
+    {
+      "threshold_deg": 22.062782958545295,
+      "minimum_angle_deg": 2.0002617040539237
+    },
+    {
+      "threshold_deg": 22.047157958545295,
+      "minimum_angle_deg": 22.047170641126822
+    },
+    {
+      "threshold_deg": 22.062795641126822,
+      "minimum_angle_deg": 2.522742184658506
+    },
+    {
+      "threshold_deg": 22.054983141126822,
+      "minimum_angle_deg": 4.09441539289802
+    },
+    {
+      "threshold_deg": 22.051076891126822,
+      "minimum_angle_deg": 22.051116610255914
+    },
+    {
+      "threshold_deg": 22.055022860255914,
+      "minimum_angle_deg": 22.05503167464793
+    }
+  ]
+}
